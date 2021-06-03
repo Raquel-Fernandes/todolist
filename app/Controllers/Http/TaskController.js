@@ -1,9 +1,50 @@
 'use strict'
 
+const Task              =   use('App/Models/Task')
+const { validateAll }   =   use('Validator') 
+
 class TaskController {
 
-    index({view }){
-        return render.view('task');
+    async index({ view }){
+        const tasks         =   await Task.all()
+        const tasksJSON     =   tasks.toJSON()
+
+        return view.render('task', {
+            title   : 'Latest Tasks',
+            tasks   : tasksJSON
+        })
+    }
+    add({ view }){
+        return view.render('add')
+    }
+
+    async store({ request, response, session }){
+        const message       = {
+            'title.required' : 'Required',
+            'title.min': 'min 5',
+            'title.max': 'max 140',
+            
+        }
+        const validation    = await validateAll(request.all(), {
+            title   :  'required|min:5|max:140',
+            body    :  'required|min:10'
+        }, message)
+        const task          = new Task()
+
+        if(validation.fails()){
+            session.withErrors(validation.messages()).flashAll()
+            return response.redirect('back')
+        }
+        
+
+        task.title  = request.input('title')
+        task.body   = request.input('body')
+
+        await task.save()
+
+        session.flash({ notification: 'Task added!' })
+
+        return response.redirect('/task')
     }
 }
 
